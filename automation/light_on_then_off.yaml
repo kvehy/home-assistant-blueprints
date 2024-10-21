@@ -1,0 +1,121 @@
+blueprint:
+  name: Motion Auto Light
+  description: Automaticky rozsvítit a zhasnout v závislosti na pohybu s podmínkou a sekvencemi
+  domain: automation
+  author: Kvehy
+  input:
+    motion_sensor:
+      name: Motion Sensor
+      description: Select the motion sensor entity
+      selector:
+        entity:
+          domain: binary_sensor
+          device_class: occupancy
+
+    occupancy_sequence:
+      name: Sequence for Occupancy
+      description: Definuj sekvenci, která se provede, když je detekován pohyb
+      default: []
+      selector:
+        action: {}
+
+    no_occupancy_sequence:
+      name: Sequence for No Occupancy
+      description: Definuj sekvenci, která se provede, když není detekován pohyb
+      default: []
+      selector:
+        action: {}
+
+    before_no_occupancy_sequence:
+      name: Before sequence for No Occupancy
+      description: Definuj sekvenci, která se provede před "No Occupancy" - například ztmavení světla
+      default: []
+      selector:
+        action: {}
+
+    before_no_occupancy_delay:
+      name: Delay between Before No Occupancy and No Occupancy (Seconds)
+      description: Zpoždění mezi sekvencemi před "No Occupancy" a "No Occupancy"
+      default: 0
+      selector:
+        number:
+          min: 0
+          max: 60
+          unit_of_measurement: seconds
+          mode: slider
+          step: 1
+
+    delay_after_occupancy:
+      name: Delay after Occupancy Action (Seconds)
+      description: Delay before turning off the lights after running the occupancy sequence
+      selector:
+        number:
+          min: 0
+          max: 3600
+          unit_of_measurement: seconds
+          mode: slider
+          step: 1
+
+    delay_after_occupancy_force:
+      name: Delay after Occupancy Action (Seconds) Force
+      description: If Motion malfunctioned and did not arrived clear status - manually run turn off sequence after this delay
+      selector:
+        number:
+          min: 0
+          max: 3600
+          unit_of_measurement: seconds
+          mode: slider
+          step: 1
+
+    custom_condition:
+      name: Custom Condition
+      description: Podmínka, která musí být splněna, aby se spustila sekvence (volitelné)
+      default: []
+      selector:
+        condition: {}
+
+mode: restart
+
+variables:
+  before_no_occupancy_delay_value: !input before_no_occupancy_delay
+
+trigger:
+  - platform: state
+    entity_id: !input motion_sensor
+    to: "on"
+    id: OCCUPANCY
+  - platform: state
+    entity_id: !input motion_sensor
+    to: "off"
+    id: NO_OCCUPANCY
+    for:
+      hours: 0
+      minutes: 0
+      seconds: !input delay_after_occupancy
+
+condition: []
+
+action:
+  - choose:
+      - conditions:
+          - condition: trigger
+            id: OCCUPANCY
+          - condition: and
+            conditions: !input custom_condition
+        sequence: !input occupancy_sequence
+      - conditions:
+          - condition: trigger
+            id: NO_OCCUPANCY
+          - condition: and
+            conditions: !input custom_condition
+        sequence:
+          - choose:
+              - conditions:
+                  - condition: template
+                    value_template: "{{ before_no_occupancy_delay_value | int > 0 }}"
+                sequence:
+                  - sequence: !input before_no_occupancy_sequence
+                  - delay:
+                      seconds: "{{ before_no_occupancy_delay_value }}"
+          - sequence:
+              - sequence: !input no_occupancy_sequence

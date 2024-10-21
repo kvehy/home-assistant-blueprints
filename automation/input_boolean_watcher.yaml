@@ -1,0 +1,45 @@
+blueprint:
+  name: Input Boolean Watcher
+  description: Watching input_boolean entity
+  domain: automation
+  author: Kvehy
+  input:
+    entity_watch:
+      name: Entity to watch
+      description: This entity is trigger
+      selector:
+        entity:
+          domain: input_boolean
+    sequence_on:
+      name: Sequence for ON state
+      default: []
+      selector:
+        action: {}
+    sequence_off:
+      name: Sequence for OFF state
+      default: []
+      selector:
+        action: {}
+
+trigger:
+  - platform: state
+    entity_id: !input entity_watch
+    to: "on"
+    id: TURN_ON
+  - platform: state
+    entity_id: !input entity_watch
+    to: "off"
+    id: TURN_OFF
+
+action:
+  - choose:
+      - conditions:
+          - condition: trigger
+            id: TURN_ON
+        sequence: !input sequence_on
+      - conditions:
+          - condition: trigger
+            id: TURN_OFF
+        sequence: !input sequence_off
+
+mode: restart

@@ -2,6 +2,7 @@ blueprint:
   name: Tesla Quatro Button
   description: Customizable blueprint for Tesla Quatro Button with optional actions for each button.
   domain: automation
+  author: Kvehy
   input:
     device:
       name: Zařízení
