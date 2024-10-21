@@ -1,0 +1,82 @@
+blueprint:
+  name: IKEA RODRET Button
+  description: "Automation for controlling actions using the IKEA RODRET button"
+  domain: automation
+  author: Kvehy
+  input:
+    remote_device:
+      name: IKEA RODRET Device
+      description: Select the device that will serve as a remote control.
+      selector:
+        device: {}
+    turn_on_sequence:
+      name: Power-up sequence
+      description: What should happen when you press the power button.
+      default: []
+      selector:
+        action: {}
+    turn_off_sequence:
+      name: Shutdown sequence
+      description: What should happen when the shutdown button is pressed.
+      default: []
+      selector:
+        action: {}
+    dim_up_sequence:
+      name: Sequence to increase the brightness
+      description: What should happen when you press the button to increase the brightness.
+      default: []
+      selector:
+        action: {}
+    dim_down_sequence:
+      name: Sequence to decrease the brightness
+      description: What should happen when you press the button to decrease the brightness.
+      default: []
+      selector:
+        action: {}
+
+trigger:
+  - platform: device
+    device_id: !input remote_device
+    domain: zha
+    type: remote_button_short_press
+    subtype: turn_on
+    id: TURN_ON
+  - platform: device
+    device_id: !input remote_device
+    domain: zha
+    type: remote_button_short_press
+    subtype: turn_off
+    id: TURN_OFF
+  - platform: device
+    device_id: !input remote_device
+    domain: zha
+    type: remote_button_long_press
+    subtype: dim_up
+    id: DIM_UP
+  - platform: device
+    device_id: !input remote_device
+    domain: zha
+    type: remote_button_long_press
+    subtype: dim_down
+    id: DIM_DOWN
+
+action:
+  - choose:
+      - conditions:
+          - condition: trigger
+            id: TURN_ON
+        sequence: !input turn_on_sequence
+      - conditions:
+          - condition: trigger
+            id: TURN_OFF
+        sequence: !input turn_off_sequence
+      - conditions:
+          - condition: trigger
+            id: DIM_UP
+        sequence: !input dim_up_sequence
+      - conditions:
+          - condition: trigger
+            id: DIM_DOWN
+        sequence: !input dim_down_sequence
+mode: parallel
+max: 10
