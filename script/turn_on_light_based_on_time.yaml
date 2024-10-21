@@ -1,0 +1,162 @@
+blueprint:
+  name: Turn on light based on time
+  description: Turn on light based on time
+  domain: script
+  author: Kvehy
+  input:
+    light_target:
+      name: Lights
+      description: Which light sources to change
+      selector:
+        target:
+          entity:
+            domain: light
+    time_morning_start:
+      name: MORNING time start
+      description: time start
+      selector:
+        time: {}
+    kelvin_morning:
+      name: MORNING Kelvin value
+      selector:
+        number:
+          min: 2000
+          max: 6500
+          step: 100
+          mode: slider
+    brightness_morning:
+      name: MORNING Brightness value
+      selector:
+        number:
+          min: 1
+          max: 100
+          step: 1
+          mode: slider
+    time_morning_end:
+      name: MORNING time end
+      description: time end
+      selector:
+        time: {}
+    kelvin_day:
+      name: DAY Kelvin value
+      selector:
+        number:
+          min: 2000
+          max: 6500
+          step: 100
+          mode: slider
+    brightness_day:
+      name: DAY Brightness value
+      selector:
+        number:
+          min: 1
+          max: 100
+          step: 1
+          mode: slider
+    time_evening_start:
+      name: EVENING time start
+      description: time start
+      selector:
+        time: {}
+    kelvin_evening:
+      name: EVENING Kelvin value
+      selector:
+        number:
+          min: 2000
+          max: 6500
+          step: 100
+          mode: slider
+    brightness_evening:
+      name: EVENING Brightness value
+      selector:
+        number:
+          min: 1
+          max: 100
+          step: 1
+          mode: slider
+    time_evening_end:
+      name: EVENING time end
+      description: time end
+      selector:
+        time: {}
+    kelvin_night:
+      name: NIGHT Kelvin value
+      selector:
+        number:
+          min: 2000
+          max: 6500
+          step: 100
+          mode: slider
+    brightness_night:
+      name: NIGHT Brightness value
+      selector:
+        number:
+          min: 1
+          max: 100
+          step: 1
+          mode: slider
+
+mode: restart
+
+sequence:
+  - choose:
+      - conditions:
+          - condition: time
+            after: !input time_morning_start
+            before: !input time_morning_end
+            weekday:
+              - sun
+              - sat
+              - fri
+              - thu
+              - wed
+              - mon
+              - tue
+        sequence:
+          - service: light.turn_on
+            target: !input light_target
+            data:
+              brightness_pct: !input brightness_morning
+              kelvin: !input kelvin_morning
+      - conditions:
+        - condition: time
+          after: !input time_evening_start
+          before: !input time_evening_end
+          weekday:
+            - sun
+            - sat
+            - fri
+            - thu
+            - wed
+            - mon
+            - tue
+        sequence:
+          - service: light.turn_on
+            target: !input light_target
+            data:
+              brightness_pct: !input brightness_evening
+              kelvin: !input kelvin_evening
+      - conditions:
+        - condition: time
+          after: !input time_morning_end
+          before: !input time_evening_start
+          weekday:
+            - sun
+            - sat
+            - fri
+            - thu
+            - wed
+            - mon
+            - tue
+        sequence:
+          - service: light.turn_on
+            target: !input light_target
+            data:
+              brightness_pct: !input brightness_day
+              kelvin: !input kelvin_day
+    default:
+      - service: light.turn_on
+        target: !input light_target
+        data:
+          brightness_pct: !input brightness_night
+          kelvin: !input kelvin_night

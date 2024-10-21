@@ -1,0 +1,68 @@
+blueprint:
+  name: Do certain things based on time
+  description: Define custom script behavior based on different time segments.
+  domain: script
+  author: Kvehy
+  input:
+    morning_sequence:
+      name: Morning Sequence
+      description: Actions to perform in the morning
+      selector:
+        action: {}
+    day_sequence:
+      name: Day Sequence
+      description: Actions to perform during the day
+      selector:
+        action: {}
+    evening_sequence:
+      name: Evening Sequence
+      description: Actions to perform in the evening
+      selector:
+        action: {}
+    night_sequence:
+      name: Night Sequence
+      description: Actions to perform during the night
+      selector:
+        action: {}
+    time_morning_start:
+      name: MORNING time start
+      description: Time when morning starts
+      selector:
+        time: {}
+    time_morning_end:
+      name: MORNING time end
+      description: Time when morning ends
+      selector:
+        time: {}
+    time_evening_start:
+      name: EVENING time start
+      description: Time when evening starts
+      selector:
+        time: {}
+    time_evening_end:
+      name: EVENING time end
+      description: Time when evening ends
+      selector:
+        time: {}
+
+mode: restart
+
+sequence:
+  - choose:
+      - conditions:
+          - condition: time
+            after: !input time_morning_start
+            before: !input time_morning_end
+        sequence: !input morning_sequence
+      - conditions:
+          - condition: time
+            after: !input time_morning_end
+            before: !input time_evening_start
+        sequence: !input day_sequence
+      - conditions:
+          - condition: time
+            after: !input time_evening_start
+            before: !input time_evening_end
+        sequence: !input evening_sequence
+    default:
+      - sequence: !input night_sequence
