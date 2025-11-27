@@ -1,0 +1,165 @@
+blueprint:
+  name: "Control Light"
+  description: "Turn on light with optional day phase settings - can use only brightness or full settings"
+  author: Kvehy
+  domain: script
+  input:
+    day_phase_input:
+      name: "Day Phase Input Select"
+      description: "Input select entity that holds current day phase for the room"
+      selector:
+        entity:
+          domain: input_select
+    target_light:
+      name: "Target Light"
+      description: "The light entity to control"
+      selector:
+        entity:
+          domain: light
+    use_day_phase:
+      name: "Use Day Phase Settings"
+      description: "Enable day phase color/temp control. If disabled, only brightness is applied."
+      default: true
+      selector:
+        boolean: {}
+    light_settings:
+      name: "Light Settings"
+      description: "JSON object with settings for each day phase (morning/day/evening/night) and custom colors"
+      default:
+        morning:
+          brightness_pct: 50
+          rgb_color: [245, 200, 150]
+        day:
+          brightness_pct: 100
+          rgb_color: [240, 240, 240]
+        evening:
+          brightness_pct: 50
+          rgb_color: [245, 200, 150]
+        night:
+          brightness_pct: 1
+          rgb_color: [245, 200, 150]
+        red:
+          rgb_color: [255, 0, 0]
+        green:
+          rgb_color: [0, 255, 0]
+        blue:
+          rgb_color: [10, 173, 255]
+        purple:
+          rgb_color: [112, 98, 157]
+      selector:
+        object: {}
+    fallback_brightness:
+      name: "Fallback Brightness"
+      description: "Brightness to use if day phase not found in settings"
+      default: 1
+      selector:
+        number:
+          min: 1
+          max: 100
+
+fields:
+  color:
+    name: "Custom Color"
+    description: "Optional: Color name from light_settings (e.g., 'red', 'blue', 'green', 'purple')"
+    required: false
+    example: "red"
+    selector:
+      text:
+  brightness:
+    name: "Brightness Override"
+    description: "Optional: Override brightness (0-100). Use 0 to turn off the light."
+    required: false
+    example: 50
+    selector:
+      number:
+        min: 0
+        max: 100
+        unit_of_measurement: "%"
+  toggle:
+    name: "Toggle Mode"
+    description: "Optional: Set to 1 to toggle light (turn off if on, turn on if off). Any other value or empty = normal mode."
+    required: false
+    example: 1
+    selector:
+      number:
+        min: 0
+        max: 1
+
+sequence:
+  - variables:
+      day_phase_entity: !input day_phase_input
+      current_phase: "{{ states(day_phase_entity) | lower }}"
+      all_settings: !input light_settings
+      fallback_brightness_pct: !input fallback_brightness
+      use_phase: !input use_day_phase
+      custom_color: "{{ color | default('') }}"
+      custom_brightness: "{{ brightness if brightness is defined else none }}"
+      toggle_mode: "{{ toggle if toggle is defined else none }}"
+      target_light_entity: !input target_light
+      
+      # Získej nastavení pro aktuální fázi
+      phase_settings: "{{ all_settings.get(current_phase, {}) }}"
+      
+      # Získej custom color settings, pokud je zadána
+      color_settings: "{{ all_settings.get(custom_color, {}) if custom_color else {} }}"
+      
+  - choose:
+      # Toggle mode: pokud je toggle == 1 a světlo je zapnuté, vypni ho
+      - conditions:
+          - condition: template
+            value_template: "{{ toggle_mode is not none and toggle_mode | int == 1 }}"
+          - condition: template
+            value_template: "{{ states(target_light_entity) == 'on' }}"
+        sequence:
+          - service: light.turn_off
+            target:
+              entity_id: !input target_light
+      # Brightness == 0: vypni světlo
+      - conditions:
+          - condition: template
+            value_template: "{{ custom_brightness is not none and custom_brightness | int == 0 }}"
+        sequence:
+          - service: light.turn_off
+            target:
+              entity_id: !input target_light
+    default:
+      # Normální režim: zapni světlo (včetně toggle == 1 když je světlo vypnuté)
+      - service: light.turn_on
+        target:
+          entity_id: !input target_light
+        data: >
+          {% if custom_brightness is not none %}
+            {# Brightness override je zadaný #}
+            {% set brightness_pct = custom_brightness | int %}
+            {% if custom_color and color_settings %}
+              {# Custom barva + custom brightness #}
+              {% set rgb = color_settings.get('rgb_color', [255, 255, 255]) %}
+              {{ {'brightness_pct': brightness_pct, 'rgb_color': rgb} }}
+            {% elif use_phase and phase_settings %}
+              {# Day phase barva + custom brightness #}
+              {% set rgb = phase_settings.get('rgb_color', none) %}
+              {% if rgb %}
+                {{ {'brightness_pct': brightness_pct, 'rgb_color': rgb} }}
+              {% else %}
+                {{ {'brightness_pct': brightness_pct} }}
+              {% endif %}
+            {% else %}
+              {# Pouze custom brightness #}
+              {{ {'brightness_pct': brightness_pct} }}
+            {% endif %}
+          {% elif custom_color and color_settings %}
+            {# Pokud je zadána custom barva a existuje v settings #}
+            {% set brightness_pct = phase_settings.get('brightness_pct', fallback_brightness_pct) | int %}
+            {% set rgb = color_settings.get('rgb_color', [255, 255, 255]) %}
+            {{ {'brightness_pct': brightness_pct, 'rgb_color': rgb} }}
+          {% elif use_phase and phase_settings %}
+            {# Použij nastavení podle day phase #}
+            {{ dict(phase_settings) }}
+          {% else %}
+            {# Pouze brightness, bez barev #}
+            {% set brightness_pct = phase_settings.get('brightness_pct', fallback_brightness_pct) | int %}
+            {{ {'brightness_pct': brightness_pct} }}
+          {% endif %}
+
+mode: single
+icon: mdi:lightbulb-auto
