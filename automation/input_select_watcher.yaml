@@ -1,0 +1,38 @@
+blueprint:
+  name: Input Select Change Watcher with Condition
+  description: Executes a sequence when an input_select changes its state, but only if a defined condition is met.
+  domain: automation
+  author: Kvehy
+  input:
+    entity_watch:
+      name: Input Select to watch
+      description: This input_select entity will trigger the automation on change.
+      selector:
+        entity:
+          domain: input_select
+    custom_condition:
+      name: Condition
+      description: This condition must be true for the sequence to run.
+      default: []
+      selector:
+        condition: {}
+    sequence:
+      name: Action Sequence
+      description: The sequence to execute when the input_select changes its state and the condition is met.
+      default: []
+      selector:
+        action: {}
+
+trigger:
+  - platform: state
+    entity_id: !input entity_watch
+
+action:
+  - choose:
+      - conditions:
+          - condition: template
+            value_template: >
+              {{ trigger.from_state.state != trigger.to_state.state }}
+          - condition: and
+            conditions: !input custom_condition
+        sequence: !input sequence
